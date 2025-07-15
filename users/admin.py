@@ -1,41 +1,30 @@
 from django.contrib import admin
-from django import forms
+from django.contrib.auth.admin import UserAdmin
 from .models import User
 
-class UserAdminForm(forms.ModelForm):
-    class Meta:
-        model = User
-        fields = '__all__'
 
-    def clean_phone(self):
-        phone = self.cleaned_data['phone']
-        if not phone.startswith('+'):
-            raise forms.ValidationError("Номер должен начинаться с '+'")
-        if len(phone) < 12:
-            raise forms.ValidationError("Слишком короткий номер")
-        return phone
-
-    def clean(self):
-        # Проверка для инструкторов
-        if self.cleaned_data.get('role') == 'INSTRUCTOR' and not self.cleaned_data.get('is_staff'):
-            raise forms.ValidationError("Инструктор должен иметь права staff")
-
-@admin.register(User)
-class UserAdmin(admin.ModelAdmin):
-    form = UserAdminForm  # Подключаем нашу валидацию
-    list_display = ('email', 'phone', 'first_name', 'last_name', 'role', 'created_at')
-    list_filter = ('role', 'created_at')
-    search_fields = ('email', 'phone', 'first_name')
-    readonly_fields = ('created_at',)
-
-    fieldsets = (
-        ('Основное', {
-            'fields': ('email', 'phone', 'first_name', 'last_name')
-        }),
-        ('Права', {
-            'fields': ('role', 'is_active', 'is_staff')
-        }),
-        ('Дополнительно', {
-            'fields': ('avatar', 'created_at')
+class CustomUserAdmin(UserAdmin):
+    # Поля при создании пользователя
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'email', 'password1', 'password2', 'role', 'phone'),
         }),
     )
+
+    # Поля при редактировании
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'phone')}),
+        ('Permissions', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'role', 'groups', 'user_permissions'),
+        }),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+    )
+
+    # Отображение в списке
+    list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'is_staff')
+    list_filter = ('role', 'is_staff', 'is_superuser', 'is_active')
+
+
+admin.site.register(User, CustomUserAdmin)
