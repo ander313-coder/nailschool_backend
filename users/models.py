@@ -1,39 +1,31 @@
-from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 class User(AbstractUser):
-    # Указываем уникальные related_name
-    groups = models.ManyToManyField(
-        Group,
-        verbose_name='groups',
-        blank=True,
-        related_name='custom_user_set',  # Уникальное имя
-        related_query_name='user'
-    )
-    user_permissions = models.ManyToManyField(
-        Permission,
-        verbose_name='user permissions',
-        blank=True,
-        related_name='custom_user_set',  # Уникальное имя
-        related_query_name='user'
-    )
-
-    # Наши кастомные поля
+    """
+    Расширенная модель пользователя с ролями и доступом к курсам.
+    Теперь пользователи НЕ записываются на курсы, а получают доступ.
+    """
     ROLE_CHOICES = [
-        ('MASTER', 'Мастер'),
-        ('INSTRUCTOR', 'Инструктор'),
+        ('TRAINEE', 'Стажер'),  # Может просматривать только базовые курсы
+        ('MASTER', 'Мастер'),   # Доступ к продвинутым курсам
+        ('INSTRUCTOR', 'Инструктор'),  # Может редактировать курсы
     ]
+
     role = models.CharField(
         max_length=10,
         choices=ROLE_CHOICES,
-        default='MASTER'
+        default='TRAINEE',
+        verbose_name='Роль в системе'
     )
-    phone = models.CharField(max_length=15, blank=True)
-
-    class Meta:
-        # Убедитесь, что в settings.py указано AUTH_USER_MODEL = 'users.User'
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
-
-    def __str__(self):
-        return self.username
+    phone = models.CharField(
+        max_length=15,
+        blank=True,
+        verbose_name='Контактный телефон'
+    )
+    available_courses = models.ManyToManyField(
+        'courses.Course',
+        verbose_name='Доступные курсы',
+        blank=True,
+        help_text='Курсы, которые видит пользователь в своем кабинете'
+    )
