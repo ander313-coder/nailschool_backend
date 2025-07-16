@@ -1,22 +1,24 @@
 from django.contrib import admin
-from .models import Course, Lesson
+from .models import Course, Lesson, LessonFile
+
+class LessonFileInline(admin.TabularInline):
+    model = LessonFile
+    extra = 1
 
 class LessonInline(admin.TabularInline):
-    """Редактирование уроков прямо в интерфейсе курса"""
     model = Lesson
-    extra = 1  # Количество пустых форм для добавления
-    fields = ('title', 'video_url', 'materials', 'order')
-
-@admin.register(Course)
-class CourseAdmin(admin.ModelAdmin):
-    """Настройка отображения курсов в админке"""
-    list_display = ('title', 'access_level', 'created_at')
-    list_filter = ('access_level',)
-    search_fields = ('title', 'description')
-    inlines = [LessonInline]  # Добавляем уроки к курсу
+    extra = 1
+    show_change_link = True
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    """Управление уроками"""
-    list_display = ('title', 'course', 'order')
-    list_editable = ('order',)  # Быстрое редактирование порядка
+    inlines = [LessonFileInline]
+    list_display = ('title', 'course', 'has_video')
+    list_filter = ('course',)
+
+    def has_video(self, obj):
+        return bool(obj.video_url)
+    has_video.boolean = True
+
+admin.site.register(Course)
+admin.site.register(LessonFile)
