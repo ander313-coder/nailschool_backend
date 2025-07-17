@@ -1,5 +1,9 @@
 from django.db import models
 
+#
+# Курсы
+#
+
 class Course(models.Model):
     """
     Модель курса с обязательными видеоуроками и тестами.
@@ -32,6 +36,10 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_access_level_display()})"
+
+#
+# Уроки
+#
 
 class Lesson(models.Model):
     """
@@ -79,3 +87,68 @@ class LessonFile(models.Model):
 
     def __str__(self):
         return self.title or f"Файл {self.id}"
+
+#
+# Тесты к урокам
+#
+
+class Test(models.Model):
+    lesson = models.ForeignKey(  # Меняем на ForeignKey для нескольких тестов к уроку
+        'Lesson',
+        on_delete=models.CASCADE,
+        related_name='tests',
+        verbose_name='Урок',
+        blank=True,
+        null=True
+    )
+    title = models.CharField(max_length=200, verbose_name='Название теста')
+    pass_score = models.PositiveIntegerField(
+        default=80,
+        verbose_name='Минимальный балл (%)'
+    )
+    is_required = models.BooleanField(default=True, verbose_name='Обязательный')
+
+    def __str__(self):
+        return f"{self.title} (урок: {self.lesson.title if self.lesson else 'без урока'})"
+
+class Question(models.Model):
+    QUESTION_TYPES = [
+        ('SINGLE', 'Один правильный ответ'),
+        ('MULTIPLE', 'Несколько правильных ответов'),
+        ('TEXT', 'Текстовый ответ'),
+    ]
+
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField(verbose_name='Текст вопроса')
+    type = models.CharField(
+        max_length=10,
+        choices=QUESTION_TYPES,
+        default='SINGLE',
+        verbose_name='Тип вопроса'
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name='Порядок')
+
+    class Meta:
+        ordering = ['order']
+
+class Answer(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
+    text = models.CharField(max_length=300, verbose_name='Вариант ответа')
+    is_correct = models.BooleanField(default=False, verbose_name='Правильный?')
+
+    def __str__(self):
+        return f"{self.text} ({'✓' if self.is_correct else '✗'})"
+
+class TextAnswer(models.Model):
+    """Для хранения текстовых ответов пользователей"""
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    answer_text = models.TextField(verbose_name='Ответ пользователя')
+    is_approved = models.BooleanField(
+        default=False,
+        verbose_name='Проверен инструктором'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('question', 'user')
